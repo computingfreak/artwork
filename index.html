@@ -1,336 +1,765 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Random Art Generator</title>
+  <title>Generative Art Lab</title>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0f172a;
-      --panel: #1e293b;
+      --bg: #060b1c;
+      --panel: #101a33;
+      --line: #2f4963;
+      --text: #e5edf8;
+      --muted: #9eb0c8;
       --accent: #22d3ee;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
     }
+
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at top, #1e1b4b 0, #0f172a 45%, #020617 100%);
+      background: radial-gradient(circle at top, #1d255d 0, #060b1c 55%, #030612 100%);
       color: var(--text);
-      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-      display: grid;
-      place-items: center;
-      padding: 1.5rem;
+      font: 500 15px/1.4 Inter, system-ui, Segoe UI, sans-serif;
+      padding: 16px;
     }
 
     .app {
-      width: min(960px, 100%);
-      background: color-mix(in oklab, var(--panel) 85%, black);
-      border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
-      border-radius: 1.2rem;
-      padding: 1.2rem;
-      box-shadow: 0 20px 45px rgb(2 6 23 / 40%);
+      width: min(1680px, 100%);
+      margin: 0 auto;
+      background: color-mix(in oklab, var(--panel) 92%, black);
+      border: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 24px 70px rgba(3, 8, 20, 0.45);
     }
 
-    h1 {
-      margin: 0 0 .3rem;
-      letter-spacing: .04em;
-      font-size: clamp(1.2rem, 2.4vw, 2rem);
-    }
-
-    p {
-      margin: 0;
-      color: var(--muted);
-    }
+    h1 { margin: 0 0 4px; font-size: clamp(1.25rem, 2.7vw, 2rem); }
+    p { margin: 0; color: var(--muted); }
 
     .controls {
-      margin: 1rem 0 1.2rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: .7rem;
-      align-items: center;
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 10px;
     }
 
-    select, button {
-      background: #0b1120;
+    .control {
+      background: #0a132a;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      min-height: 70px;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    .control label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 5px;
+      letter-spacing: 0.01em;
+    }
+
+    select, input, button {
+      width: 100%;
+      background: #020617;
       color: var(--text);
       border: 1px solid #334155;
-      padding: .65rem .85rem;
-      border-radius: .7rem;
+      border-radius: 8px;
+      padding: 8px;
       font-weight: 600;
     }
 
-    button {
-      cursor: pointer;
-      transition: transform .15s ease, border-color .15s ease;
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      grid-column: span 3;
+      align-items: end;
     }
 
-    button:hover {
-      border-color: var(--accent);
-      transform: translateY(-1px);
+    .badge {
+      display: inline-block;
+      margin-top: 5px;
+      border-radius: 999px;
+      border: 1px solid #155e75;
+      background: #082f49;
+      color: #67e8f9;
+      padding: 3px 9px;
+      font-size: 12px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .output {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 12px;
+      align-items: start;
     }
 
     #artCanvas {
       width: 100%;
-      aspect-ratio: 16/9;
-      border-radius: .9rem;
+      aspect-ratio: 24 / 9;
+      border-radius: 12px;
       border: 1px solid #334155;
-      background: #0b1120;
+      background: #020617;
       display: block;
     }
 
-    .tag {
-      margin-left: auto;
+    #svgOutput {
+      margin: 0;
+      min-height: 440px;
+      max-height: 640px;
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px solid #334155;
       background: #020617;
-      border: 1px dashed #475569;
-      border-radius: 999px;
-      padding: .35rem .7rem;
-      font-size: .9rem;
-      color: var(--muted);
+      color: #c6d4e9;
+      padding: 10px;
+      font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
-    @media (max-width: 640px) {
-      .tag {
-        width: 100%;
-        margin-left: 0;
-      }
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 7px;
+      color: var(--text);
+    }
+
+    .toggle input {
+      width: auto;
+      transform: scale(1.15);
+      accent-color: #22d3ee;
+    }
+
+    @media (max-width: 1280px) {
+      .controls { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .span-3 { grid-column: span 2; }
+      .actions { grid-column: span 3; }
+      .output { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .span-2, .span-3, .actions { grid-column: span 2; }
     }
   </style>
 </head>
 <body>
   <main class="app">
-    <h1>🎨 Random Artwork Generator</h1>
-    <p>Create AI-style abstract scenes in different art modes: watercolor, canvas painting, still life, and futuristic cityscapes.</p>
+    <h1>🧪 Generative Art Lab</h1>
+    <p>Interactive 27-mode art generator with control over chaos, color mood, geometry, noise, randomness, symmetry, and SVG/PNG export.</p>
 
     <section class="controls">
-      <label>
-        <span class="sr-only">Art style</span>
-        <select id="stylePicker" aria-label="Pick art style">
-          <option value="random">Random style</option>
-          <option value="watercolor">Watercolor landscape</option>
-          <option value="canvas">Canvas painting texture</option>
-          <option value="stilllife">Still life scene</option>
-          <option value="futuristic">Futuristic modern city</option>
+      <div class="control span-3">
+        <label for="mode">Art Mode</label>
+        <select id="mode"></select>
+      </div>
+
+      <div class="control">
+        <label for="chaos">🎛 Chaos Level</label>
+        <input id="chaos" type="range" min="0" max="100" value="55" />
+      </div>
+
+      <div class="control">
+        <label for="organic">🌊 Organic vs Geometric</label>
+        <input id="organic" type="range" min="0" max="100" value="50" />
+      </div>
+
+      <div class="control">
+        <label for="noise">Noise</label>
+        <input id="noise" type="range" min="0" max="100" value="40" />
+      </div>
+
+      <div class="control">
+        <label for="randomness">Randomness</label>
+        <input id="randomness" type="range" min="0" max="100" value="65" />
+      </div>
+
+      <div class="control">
+        <label for="geometry">Geometry Density</label>
+        <input id="geometry" type="range" min="0" max="100" value="60" />
+      </div>
+
+      <div class="control">
+        <label for="mood">🎨 Color Mood</label>
+        <select id="mood">
+          <option value="warm">warm</option>
+          <option value="cool">cool</option>
+          <option value="pastel">pastel</option>
+          <option value="neon">neon</option>
         </select>
-      </label>
-      <button id="generateBtn">Generate Artwork</button>
-      <button id="downloadBtn">Download PNG</button>
-      <span class="tag" id="activeStyle">Current style: Random</span>
+      </div>
+
+      <div class="control span-2">
+        <label>🧠 Symmetry Strength</label>
+        <div class="toggle">
+          <input id="symmetry" type="checkbox" checked />
+          <span>Enable mirrored symmetry</span>
+        </div>
+      </div>
+
+      <div class="control actions">
+        <button id="generate">Generate</button>
+        <button id="downloadPng">PNG</button>
+        <button id="downloadSvg">SVG</button>
+      </div>
+
+      <div class="control span-2">
+        <label>Current Mode</label>
+        <span id="currentMode" class="badge">Random mode</span>
+      </div>
     </section>
 
-    <canvas id="artCanvas" width="1280" height="720" aria-label="Generated artwork"></canvas>
+    <section class="output">
+      <canvas id="artCanvas" width="1920" height="760" aria-label="Generated art"></canvas>
+      <pre id="svgOutput" aria-label="SVG output"></pre>
+    </section>
   </main>
 
   <script>
     const canvas = document.getElementById('artCanvas');
     const ctx = canvas.getContext('2d');
-    const picker = document.getElementById('stylePicker');
-    const activeStyleText = document.getElementById('activeStyle');
+    const modeSelect = document.getElementById('mode');
+    const currentMode = document.getElementById('currentMode');
+    const svgOutput = document.getElementById('svgOutput');
 
-    const styles = ['watercolor', 'canvas', 'stilllife', 'futuristic'];
+    const modeList = [
+      'Paint splatter physics',
+      'Layered translucent color fields',
+      'Randomized brush strokes',
+      'Motion-based particle trails',
+      'Mondrian / Geometric Minimalism',
+      'Generative Fractals',
+      'Noise-driven recursive trees',
+      'Zoom animations',
+      'Mandelbrot/Julia sets',
+      'Japanese Minimal Zen Simulated ink bleed',
+      'Japanese Minimal Zen Sparse composition',
+      'Japanese Minimal Zen Brush stroke vector dynamics',
+      'Japanese Minimal Zen Controlled negative space',
+      'Low-Poly / Faceted Art Delaunay triangulation',
+      'Low-Poly / Faceted Art Gradient Fill',
+      'Low-Poly / Faceted Art Random light source simulation',
+      'Vaporwave / Retro 80s Pal Silhouettes',
+      'Vaporwave / Retro 80s Chromatic aberration',
+      'Neural / Flow Field Art Perlin/Simplex noise',
+      'Neural / Flow Field Art Vector flow simulation',
+      'Neural / Flow Field Art Particle path tracing',
+      'Mandala / Symmetry Art Kaleidoscope mirroring',
+      'Mandala / Symmetry Art Rotational parameter control',
+      'Rotational parameter control Radial symmetry',
+      'Cyberpunk City Silhouettes Random skyline generator',
+      'Bauhaus / Modernist Posters Asymmetric balance',
+      'Bauhaus / Modernist Posters Limited color schemes'
+    ];
 
+    modeSelect.innerHTML = '<option value="random">Random mode</option>' +
+      modeList.map((m, i) => `<option value="${i}">${i + 1}. ${m}</option>`).join('');
+
+    const $ = (id) => document.getElementById(id);
     const rand = (min, max) => Math.random() * (max - min) + min;
     const rint = (min, max) => Math.floor(rand(min, max + 1));
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    function resetCanvas(base = '#111827') {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = base;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function getPalette(mood) {
+      return {
+        warm: ['#ef4444', '#f97316', '#f59e0b', '#fb7185', '#fecaca'],
+        cool: ['#06b6d4', '#3b82f6', '#6366f1', '#14b8a6', '#bae6fd'],
+        pastel: ['#fbcfe8', '#bfdbfe', '#bbf7d0', '#fde68a', '#ddd6fe'],
+        neon: ['#ff00ff', '#00ffff', '#39ff14', '#ffee00', '#ff4d6d']
+      }[mood] || ['#22d3ee', '#3b82f6', '#a78bfa'];
     }
 
-    function paintWatercolor() {
-      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      sky.addColorStop(0, pick(['#c4b5fd', '#a5f3fc', '#bfdbfe']));
-      sky.addColorStop(1, pick(['#fde68a', '#fca5a5', '#d8b4fe']));
-      resetCanvas('#e2e8f0');
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = 0; i < 180; i++) {
-        ctx.globalAlpha = rand(0.05, 0.22);
-        ctx.fillStyle = `hsl(${rint(180, 340)} 70% ${rint(50, 80)}%)`;
-        ctx.beginPath();
-        const x = rand(-80, canvas.width + 80);
-        const y = rand(-50, canvas.height + 50);
-        const w = rand(80, 290);
-        const h = rand(60, 210);
-        ctx.ellipse(x, y, w, h, rand(0, Math.PI), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.globalAlpha = 0.3;
-      for (let i = 0; i < 15; i++) {
-        ctx.strokeStyle = `hsl(${rint(180, 260)} 50% ${rint(30, 50)}%)`;
-        ctx.lineWidth = rand(2, 8);
-        ctx.beginPath();
-        ctx.moveTo(rand(0, canvas.width), rand(canvas.height * 0.4, canvas.height));
-        ctx.quadraticCurveTo(rand(0, canvas.width), rand(0, canvas.height), rand(0, canvas.width), rand(canvas.height * 0.55, canvas.height));
-        ctx.stroke();
-      }
-
-      ctx.globalAlpha = 1;
-    }
-
-    function paintCanvasTexture() {
-      resetCanvas('#1f2937');
-      const grad = ctx.createRadialGradient(canvas.width * .4, canvas.height * .4, 50, canvas.width * .4, canvas.height * .4, canvas.width * .8);
-      grad.addColorStop(0, pick(['#f97316', '#ef4444', '#38bdf8', '#a78bfa']));
-      grad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = 0; i < 1000; i++) {
-        ctx.fillStyle = `rgba(255,255,255,${rand(0.02, 0.08)})`;
-        ctx.fillRect(rand(0, canvas.width), rand(0, canvas.height), 2, 2);
-      }
-
-      for (let i = 0; i < 55; i++) {
-        ctx.strokeStyle = `hsla(${rint(10, 320)} 90% ${rint(45, 70)}% / ${rand(0.4, 0.8)})`;
-        ctx.lineWidth = rand(6, 20);
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(rand(0, canvas.width), rand(0, canvas.height));
-        ctx.bezierCurveTo(rand(0, canvas.width), rand(0, canvas.height), rand(0, canvas.width), rand(0, canvas.height), rand(0, canvas.width), rand(0, canvas.height));
-        ctx.stroke();
-      }
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-      for (let y = 0; y < canvas.height; y += 12) {
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y + rand(-2, 2));
-        ctx.stroke();
-      }
-    }
-
-    function paintStillLife() {
-      resetCanvas('#111827');
-
-      const wall = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.72);
-      wall.addColorStop(0, '#78350f');
-      wall.addColorStop(1, '#451a03');
-      ctx.fillStyle = wall;
-      ctx.fillRect(0, 0, canvas.width, canvas.height * 0.72);
-
-      const table = ctx.createLinearGradient(0, canvas.height * 0.65, 0, canvas.height);
-      table.addColorStop(0, '#5b341b');
-      table.addColorStop(1, '#2b190e');
-      ctx.fillStyle = table;
-      ctx.fillRect(0, canvas.height * 0.65, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#9a3412';
-      ctx.beginPath();
-      ctx.ellipse(canvas.width * 0.5, canvas.height * 0.63, 180, 120, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#7c2d12';
-      ctx.fillRect(canvas.width * 0.43, canvas.height * 0.42, 180, 170);
-
-      for (let i = 0; i < 8; i++) {
-        ctx.fillStyle = pick(['#ef4444', '#f59e0b', '#84cc16', '#fb7185']);
-        ctx.beginPath();
-        ctx.arc(rand(canvas.width * 0.38, canvas.width * 0.67), rand(canvas.height * 0.47, canvas.height * 0.66), rand(20, 48), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.beginPath();
-        ctx.arc(rand(canvas.width * 0.38, canvas.width * 0.67), rand(canvas.height * 0.47, canvas.height * 0.66), rand(6, 14), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = 'rgba(255, 245, 200, 0.8)';
-      ctx.fillRect(canvas.width * 0.78, canvas.height * 0.34, 26, 180);
-      ctx.fillStyle = 'rgba(255, 220, 120, 0.28)';
-      ctx.beginPath();
-      ctx.moveTo(canvas.width * 0.791, canvas.height * 0.37);
-      ctx.lineTo(canvas.width * 0.73, canvas.height * 0.68);
-      ctx.lineTo(canvas.width * 0.86, canvas.height * 0.68);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    function paintFuturisticCity() {
-      resetCanvas('#020617');
-
-      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      sky.addColorStop(0, '#020617');
-      sky.addColorStop(0.6, '#0f172a');
-      sky.addColorStop(1, '#1d4ed8');
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = 0; i < 150; i++) {
-        ctx.fillStyle = `rgba(148, 163, 184, ${rand(0.2, 0.95)})`;
-        ctx.fillRect(rand(0, canvas.width), rand(0, canvas.height * 0.55), rand(1, 3), rand(1, 3));
-      }
-
-      for (let i = 0; i < 22; i++) {
-        const w = rand(50, 120);
-        const h = rand(120, 420);
-        const x = i * (canvas.width / 22) + rand(-12, 12);
-        const y = canvas.height - h;
-        ctx.fillStyle = `hsl(${rint(200, 240)} 60% ${rint(16, 30)}%)`;
-        ctx.fillRect(x, y, w, h);
-
-        for (let wy = y + 10; wy < y + h - 10; wy += 14) {
-          for (let wx = x + 8; wx < x + w - 8; wx += 10) {
-            ctx.fillStyle = Math.random() > 0.4 ? 'rgba(56, 189, 248, 0.55)' : 'rgba(251,191,36,0.36)';
-            ctx.fillRect(wx, wy, 4, 6);
-          }
-        }
-
-        ctx.fillStyle = 'rgba(34,211,238,0.55)';
-        ctx.fillRect(x + w * 0.48, y - rand(20, 80), 3, rand(20, 80));
-      }
-
-      ctx.strokeStyle = 'rgba(34,211,238,0.75)';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 5; i++) {
-        const y = rand(canvas.height * 0.58, canvas.height * 0.9);
-        ctx.beginPath();
-        ctx.moveTo(-20, y);
-        ctx.quadraticCurveTo(canvas.width * 0.5, y + rand(-90, 90), canvas.width + 20, y + rand(-20, 20));
-        ctx.stroke();
-      }
-
-      for (let i = 0; i < 7; i++) {
-        const baseX = rand(80, canvas.width - 80);
-        const baseY = rand(canvas.height * 0.55, canvas.height * 0.85);
-        ctx.fillStyle = 'rgba(14, 165, 233, 0.92)';
-        ctx.fillRect(baseX, baseY, 36, 12);
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
-        ctx.fillRect(baseX + 3, baseY + 11, 30, 5);
-      }
-    }
-
-    function generateArt() {
-      const mode = picker.value === 'random' ? pick(styles) : picker.value;
-      const actions = {
-        watercolor: paintWatercolor,
-        canvas: paintCanvasTexture,
-        stilllife: paintStillLife,
-        futuristic: paintFuturisticCity
+    function params() {
+      return {
+        chaos: +$('chaos').value / 100,
+        organic: +$('organic').value / 100,
+        noise: +$('noise').value / 100,
+        randomness: +$('randomness').value / 100,
+        geometry: +$('geometry').value / 100,
+        symmetry: $('symmetry').checked,
+        colors: getPalette($('mood').value)
       };
-
-      actions[mode]();
-      activeStyleText.textContent = `Current style: ${mode}`;
     }
 
-    document.getElementById('generateBtn').addEventListener('click', generateArt);
-    document.getElementById('downloadBtn').addEventListener('click', () => {
+    function resetCanvas(p) {
+      const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      g.addColorStop(0, pick(p.colors));
+      g.addColorStop(1, '#020617');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = 1;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function mirrored(draw, p) {
+      draw();
+      if (!p.symmetry) return;
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      draw();
+      ctx.restore();
+    }
+
+    function flowTrail(p, steps = 120) {
+      let x = rand(0, canvas.width);
+      let y = rand(0, canvas.height);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let i = 0; i < steps; i++) {
+        const a = Math.sin((x * 0.002) + (y * 0.003) + (p.noise * 8)) * Math.PI * 2;
+        x += Math.cos(a) * (2 + p.chaos * 4);
+        y += Math.sin(a) * (2 + p.chaos * 4);
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    function drawMode(index, p) {
+      resetCanvas(p);
+
+      const n = Math.floor(35 + p.chaos * 260 + p.geometry * 80);
+      const zenBackground = () => { ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+
+      const modes = [
+        // 1
+        () => mirrored(() => {
+          for (let i = 0; i < n; i++) {
+            ctx.globalAlpha = rand(0.08, 0.5);
+            ctx.fillStyle = pick(p.colors);
+            ctx.beginPath();
+            ctx.arc(rand(0, canvas.width), rand(0, canvas.height), rand(2, 8 + p.chaos * 70), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }, p),
+        // 2
+        () => {
+          for (let i = 0; i < 16 + p.geometry * 26; i++) {
+            ctx.fillStyle = pick(p.colors) + '77';
+            ctx.fillRect(rand(-80, canvas.width), rand(-40, canvas.height), rand(160, 700), rand(80, 360));
+          }
+        },
+        // 3
+        () => {
+          ctx.lineCap = 'round';
+          for (let i = 0; i < n / 2; i++) {
+            ctx.strokeStyle = pick(p.colors);
+            ctx.globalAlpha = rand(0.2, 0.85);
+            ctx.lineWidth = rand(2, 30 * (0.4 + p.organic));
+            ctx.beginPath();
+            ctx.moveTo(rand(0, canvas.width), rand(0, canvas.height));
+            ctx.bezierCurveTo(rand(0, canvas.width), rand(0, canvas.height), rand(0, canvas.width), rand(0, canvas.height), rand(0, canvas.width), rand(0, canvas.height));
+            ctx.stroke();
+          }
+        },
+        // 4
+        () => {
+          for (let i = 0; i < 150; i++) {
+            ctx.strokeStyle = pick(p.colors);
+            ctx.globalAlpha = 0.18 + p.randomness * 0.5;
+            ctx.lineWidth = rand(1, 3.5);
+            flowTrail(p, 45 + Math.floor(p.chaos * 120));
+          }
+        },
+        // 5
+        () => {
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          for (let i = 0; i < 95; i++) {
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = rand(4, 13);
+            if (Math.random() > 0.5) {
+              const x = rand(0, canvas.width);
+              ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            } else {
+              const y = rand(0, canvas.height);
+              ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+          }
+          ['#ef4444', '#3b82f6', '#facc15'].forEach((c) => {
+            for (let i = 0; i < 18; i++) {
+              ctx.fillStyle = c;
+              ctx.fillRect(rand(0, canvas.width), rand(0, canvas.height), rand(60, 240), rand(40, 200));
+            }
+          });
+        },
+        // 6
+        () => {
+          const branch = (x, y, len, a, d) => {
+            if (d <= 0) return;
+            const nx = x + Math.cos(a) * len;
+            const ny = y + Math.sin(a) * len;
+            ctx.strokeStyle = pick(p.colors);
+            ctx.lineWidth = Math.max(1, d * 0.8);
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(nx, ny); ctx.stroke();
+            branch(nx, ny, len * (0.65 + p.organic * 0.2), a - 0.35 - p.noise * 0.5, d - 1);
+            branch(nx, ny, len * (0.65 + p.organic * 0.2), a + 0.35 + p.noise * 0.5, d - 1);
+          };
+          branch(canvas.width / 2, canvas.height * 0.96, canvas.height * 0.2, -Math.PI / 2, 10);
+        },
+        // 7
+        () => {
+          for (let i = 0; i < 7; i++) {
+            ctx.save();
+            ctx.translate(rand(-260, 260), 0);
+            modes[5]();
+            ctx.restore();
+          }
+        },
+        // 8
+        () => {
+          for (let i = 0; i < 180; i++) {
+            ctx.strokeStyle = pick(p.colors);
+            ctx.globalAlpha = 0.22 + p.randomness * 0.55;
+            ctx.lineWidth = 1 + p.geometry * 4;
+            const w = i * (10 + p.geometry * 6);
+            const h = i * (4 + p.organic * 10);
+            ctx.strokeRect(canvas.width / 2 - w / 2, canvas.height / 2 - h / 2, w, h);
+          }
+        },
+        // 9
+        () => {
+          for (let x = 0; x < canvas.width; x += 3) {
+            for (let y = 0; y < canvas.height; y += 3) {
+              let a = (x - canvas.width / 2) / (canvas.width * 0.26);
+              let b = (y - canvas.height / 2) / (canvas.height * 0.26);
+              const ca = a;
+              const cb = b;
+              let nIter = 0;
+              const maxIter = 18 + Math.floor(p.chaos * 24);
+              while (nIter < maxIter && (a * a + b * b) < 16) {
+                const aa = a * a - b * b;
+                const bb = 2 * a * b;
+                a = aa + ca + p.noise * 0.08;
+                b = bb + cb + p.noise * 0.04;
+                nIter++;
+              }
+              ctx.fillStyle = nIter === maxIter ? '#020617' : pick(p.colors) + '99';
+              ctx.fillRect(x, y, 3, 3);
+            }
+          }
+        },
+        // 10
+        () => {
+          zenBackground();
+          for (let i = 0; i < 70; i++) {
+            ctx.fillStyle = 'rgba(12,12,12,0.04)';
+            ctx.beginPath();
+            ctx.arc(rand(0, canvas.width), rand(0, canvas.height), rand(18, 120), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.strokeStyle = '#111827';
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width * 0.15, canvas.height * 0.65);
+          ctx.quadraticCurveTo(canvas.width * 0.52, canvas.height * 0.05, canvas.width * 0.87, canvas.height * 0.7);
+          ctx.stroke();
+        },
+        // 11
+        () => {
+          zenBackground();
+          ctx.fillStyle = '#111827';
+          ctx.beginPath(); ctx.arc(canvas.width * 0.72, canvas.height * 0.28, 44, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(canvas.width * 0.22, canvas.height * 0.74, canvas.width * 0.4, 4);
+        },
+        // 12
+        () => { zenBackground(); modes[2](); },
+        // 13
+        () => {
+          zenBackground();
+          ctx.fillStyle = '#111827';
+          ctx.fillRect(canvas.width * 0.15, canvas.height * 0.82, canvas.width * 0.7, 2);
+          ctx.fillStyle = '#374151';
+          ctx.fillRect(canvas.width * 0.18, canvas.height * 0.3, 3, canvas.height * 0.4);
+        },
+        // 14
+        () => {
+          for (let i = 0; i < 190; i++) {
+            ctx.beginPath();
+            ctx.moveTo(rand(0, canvas.width), rand(0, canvas.height));
+            ctx.lineTo(rand(0, canvas.width), rand(0, canvas.height));
+            ctx.lineTo(rand(0, canvas.width), rand(0, canvas.height));
+            ctx.closePath();
+            ctx.fillStyle = pick(p.colors) + '99';
+            ctx.fill();
+          }
+        },
+        // 15
+        () => {
+          for (let i = 0; i < 220; i++) {
+            const gx = rand(0, canvas.width);
+            const gy = rand(0, canvas.height);
+            const grad = ctx.createLinearGradient(gx, gy, gx + rand(-180, 180), gy + rand(-180, 180));
+            grad.addColorStop(0, pick(p.colors));
+            grad.addColorStop(1, '#020617');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            ctx.lineTo(gx + rand(-180, 180), gy + rand(-180, 180));
+            ctx.lineTo(gx + rand(-180, 180), gy + rand(-180, 180));
+            ctx.closePath();
+            ctx.fill();
+          }
+        },
+        // 16
+        () => {
+          modes[14]();
+          ctx.globalCompositeOperation = 'screen';
+          for (let i = 0; i < 20; i++) {
+            const x = rand(0, canvas.width);
+            const y = rand(0, canvas.height);
+            const g = ctx.createRadialGradient(x, y, 5, x, y, rand(150, 360));
+            g.addColorStop(0, pick(p.colors));
+            g.addColorStop(1, 'transparent');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        },
+        // 17
+        () => {
+          ctx.fillStyle = '#fdf4ff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const horizon = canvas.height * 0.67;
+          const sunset = ctx.createLinearGradient(0, 0, 0, horizon);
+          sunset.addColorStop(0, '#fb7185'); sunset.addColorStop(1, '#7c3aed');
+          ctx.fillStyle = sunset;
+          ctx.fillRect(0, 0, canvas.width, horizon);
+          ctx.fillStyle = '#111827';
+          for (let i = 0; i < 36; i++) {
+            const x = i * (canvas.width / 36);
+            const w = rand(22, 90);
+            const h = rand(120, 420);
+            ctx.fillRect(x, horizon - h, w, h);
+          }
+        },
+        // 18
+        () => {
+          modes[16]();
+          for (let i = 0; i < 3; i++) {
+            ctx.globalAlpha = 0.2;
+            ctx.drawImage(canvas, rand(-10, 10), rand(-6, 6));
+          }
+          ctx.globalAlpha = 1;
+        },
+        // 19
+        () => { modes[3](); },
+        // 20
+        () => {
+          ctx.lineWidth = 1.5;
+          for (let i = 0; i < 200; i++) {
+            ctx.strokeStyle = pick(p.colors);
+            ctx.globalAlpha = 0.16 + p.randomness * 0.4;
+            flowTrail(p, 90);
+          }
+        },
+        // 21
+        () => {
+          for (let i = 0; i < 320; i++) {
+            let x = rand(0, canvas.width);
+            let y = rand(0, canvas.height);
+            ctx.fillStyle = pick(p.colors);
+            for (let s = 0; s < 24; s++) {
+              const a = (Math.sin(y * 0.008) + Math.cos(x * 0.007)) * Math.PI;
+              x += Math.cos(a) * (0.8 + p.chaos * 2.4);
+              y += Math.sin(a) * (0.8 + p.chaos * 2.4);
+              ctx.globalAlpha = 0.2;
+              ctx.fillRect(x, y, 2, 2);
+            }
+          }
+        },
+        // 22
+        () => {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          for (let i = 0; i < 45; i++) {
+            ctx.rotate(Math.PI / 9);
+            ctx.strokeStyle = pick(p.colors);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 30 + i * 8, 0, Math.PI * 1.4);
+            ctx.stroke();
+          }
+          ctx.restore();
+        },
+        // 23
+        () => {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          const turns = 12 + Math.floor(p.geometry * 28);
+          for (let i = 0; i < turns; i++) {
+            ctx.rotate((Math.PI * 2) / turns);
+            ctx.strokeStyle = pick(p.colors);
+            ctx.lineWidth = 2 + p.geometry * 4;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(rand(120, 420), rand(-120, 120));
+            ctx.stroke();
+          }
+          ctx.restore();
+        },
+        // 24
+        () => {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          for (let i = 0; i < 200; i++) {
+            const a = (i / 200) * Math.PI * 2 * (3 + p.chaos * 8);
+            const r = i * (2 + p.organic * 2);
+            ctx.fillStyle = pick(p.colors);
+            ctx.globalAlpha = 0.35;
+            ctx.fillRect(Math.cos(a) * r, Math.sin(a) * r, 3, 3);
+          }
+          ctx.restore();
+        },
+        // 25
+        () => {
+          const horizon = canvas.height * 0.64;
+          const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+          sky.addColorStop(0, '#020617'); sky.addColorStop(1, '#0f172a');
+          ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, horizon);
+          for (let i = 0; i < 44; i++) {
+            const x = i * (canvas.width / 44);
+            const w = rand(20, 90);
+            const h = rand(110, 500);
+            ctx.fillStyle = `hsl(${rint(210, 245)} 60% ${rint(20, 35)}%)`;
+            ctx.fillRect(x, horizon - h, w, h);
+            for (let wy = horizon - h + 8; wy < horizon - 10; wy += 13) {
+              for (let wx = x + 8; wx < x + w - 5; wx += 8) {
+                ctx.fillStyle = Math.random() > 0.45 ? 'rgba(34,211,238,0.55)' : 'rgba(250,204,21,0.35)';
+                ctx.fillRect(wx, wy, 3, 5);
+              }
+            }
+          }
+          ctx.strokeStyle = 'rgba(34,211,238,0.8)';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 5; i++) {
+            const y = rand(horizon + 10, canvas.height - 30);
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.quadraticCurveTo(canvas.width * 0.5, y + rand(-80, 80), canvas.width, y + rand(-30, 30));
+            ctx.stroke();
+          }
+        },
+        // 26
+        () => {
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          for (let i = 0; i < 120; i++) {
+            const shapeType = rint(0, 2);
+            ctx.fillStyle = pick(p.colors);
+            if (shapeType === 0) {
+              ctx.fillRect(rand(0, canvas.width), rand(0, canvas.height), rand(20, 220), rand(20, 220));
+            } else if (shapeType === 1) {
+              ctx.beginPath();
+              ctx.arc(rand(0, canvas.width), rand(0, canvas.height), rand(10, 100), 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.beginPath();
+              ctx.moveTo(rand(0, canvas.width), rand(0, canvas.height));
+              ctx.lineTo(rand(0, canvas.width), rand(0, canvas.height));
+              ctx.lineTo(rand(0, canvas.width), rand(0, canvas.height));
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+        },
+        // 27
+        () => {
+          const saved = $('mood').value;
+          $('mood').value = 'pastel';
+          const pp = params();
+          $('mood').value = saved;
+          resetCanvas(pp);
+          modes[25]();
+        }
+      ];
+
+      const modeIndex = index === 'random' ? rint(0, modes.length - 1) : Number(index);
+      modes[modeIndex]();
+      currentMode.textContent = modeList[modeIndex];
+      generateSvg(modeIndex, p);
+    }
+
+    function generateSvg(modeIndex, p) {
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}">`;
+      svg += `<rect width="100%" height="100%" fill="${pick(p.colors)}"/>`;
+
+      const shapeCount = Math.floor(40 + p.geometry * 140 + p.chaos * 60);
+      for (let i = 0; i < shapeCount; i++) {
+        const x = rand(0, canvas.width);
+        const y = rand(0, canvas.height);
+        const size = rand(8, 140 * (0.2 + p.chaos));
+        const color = pick(p.colors);
+
+        if (modeIndex % 3 === 0) {
+          svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${size.toFixed(1)}" fill="${color}" fill-opacity="0.35"/>`;
+        } else if (modeIndex % 3 === 1) {
+          svg += `<rect x="${(x - size / 2).toFixed(1)}" y="${(y - size / 2).toFixed(1)}" width="${size.toFixed(1)}" height="${(size * (0.35 + p.organic)).toFixed(1)}" fill="${color}" fill-opacity="0.35"/>`;
+        } else {
+          const qx = rand(-120, 120);
+          const qy = rand(-120, 120);
+          const ex = rand(-170, 170);
+          const ey = rand(-170, 170);
+          svg += `<path d="M${x.toFixed(1)} ${y.toFixed(1)} q ${qx.toFixed(1)} ${qy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}" stroke="${color}" stroke-width="${rand(1, 8).toFixed(1)}" fill="none" stroke-opacity="0.72"/>`;
+        }
+      }
+
+      if (p.symmetry) {
+        svg += `<line x1="${(canvas.width / 2).toFixed(1)}" y1="0" x2="${(canvas.width / 2).toFixed(1)}" y2="${canvas.height}" stroke="#ffffff" stroke-opacity="0.18"/>`;
+      }
+
+      svg += '</svg>';
+      svgOutput.textContent = svg;
+      window.latestSvg = svg;
+    }
+
+    function generate() {
+      drawMode(modeSelect.value, params());
+    }
+
+    $('generate').addEventListener('click', generate);
+    $('downloadPng').addEventListener('click', () => {
       const link = document.createElement('a');
-      link.download = `artwork-${Date.now()}.png`;
+      link.download = `art-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     });
 
-    picker.addEventListener('change', generateArt);
+    $('downloadSvg').addEventListener('click', () => {
+      const svgBlob = new Blob([window.latestSvg || svgOutput.textContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(svgBlob);
+      const link = document.createElement('a');
+      link.download = `art-${Date.now()}.svg`;
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
 
-    generateArt();
+    ['mode', 'chaos', 'organic', 'noise', 'randomness', 'geometry', 'mood', 'symmetry'].forEach((id) => {
+      $(id).addEventListener(id === 'mode' ? 'change' : 'input', generate);
+    });
+
+    generate();
   </script>
 </body>
 </html>
